@@ -16,7 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        type: 'mongodb',
+        type: configService.get('DB_TYPE') as 'mongodb',
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: configService.get<string>('NODE_ENV') !== 'production', // Boa prática: desativar em produção
