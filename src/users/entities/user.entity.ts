@@ -4,37 +4,38 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ObjectId,
+  ObjectIdColumn,
   OneToMany,
-  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @ObjectIdColumn()
+  _id: ObjectId;
 
   @Column()
-  roles: UserRole;
+  roles: UserRole[];
 
   @Column()
   name: string;
 
-  @Column()
+  @Column({ unique: true })
   phone: string;
 
   @Column()
-  isAdmin: boolean;
+  is_admin: boolean;
 
   @Column()
-  passwordHash?: string;
+  password_hash?: string;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
 
   @CreateDateColumn()
-  createdAt?: Date;
+  created_at?: Date;
 
   @UpdateDateColumn()
-  updatedAt?: Date;
+  updated_at?: Date;
 }
