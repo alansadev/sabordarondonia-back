@@ -5,14 +5,14 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  ObjectIdColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
 export class Order {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @ObjectIdColumn()
+  _id: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user' })
