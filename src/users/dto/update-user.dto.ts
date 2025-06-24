@@ -14,13 +14,15 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
-  name: string;
+  @IsOptional()
+  name?: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(12)
   @MaxLength(12)
-  phone: string;
+  @IsOptional()
+  phone?: string;
 
   @IsBoolean()
   @IsOptional()
@@ -33,5 +35,6 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
     minSymbols: 1,
     minNumbers: 1,
   })
+  @IsOptional()
   password?: string;
 }

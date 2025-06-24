@@ -5,31 +5,39 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  ObjectId,
   ObjectIdColumn,
+  OneToMany,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrderItem } from './order-item.entity';
 
-@Entity()
+@Entity('orders')
 export class Order {
   @ObjectIdColumn()
-  _id: string;
+  _id!: ObjectId;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user' })
-  user: User;
+  @ManyToOne(() => User, (user) => user.orders)
+  @JoinColumn()
+  user!: User;
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
+    cascade: true,
+  })
+  items!: OrderItem[];
 
   @Column()
-  paymentMethod: string;
+  paymentMethod!: string;
 
-  @Column('int64')
-  value: number;
+  @Column('int')
+  totalValue!: number;
 
-  @Column()
+  @Column({ nullable: true })
   clientName?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at!: Date;
 }

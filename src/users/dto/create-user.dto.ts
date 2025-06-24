@@ -1,4 +1,4 @@
-import { UserRole } from '../entities/user.role';
+import { UserRoleEnum } from '../entities/user.role';
 import {
   IsArray,
   IsBoolean,
@@ -12,20 +12,21 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsEnum(UserRole, { each: true })
+  @IsEnum(UserRoleEnum, { each: true })
   @IsArray()
-  roles: UserRole[];
+  @IsOptional()
+  roles?: UserRoleEnum[];
 
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
-  name: string;
+  name!: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(12)
   @MaxLength(12)
-  phone: string;
+  phone!: string;
 
   @IsBoolean()
   @IsOptional()
