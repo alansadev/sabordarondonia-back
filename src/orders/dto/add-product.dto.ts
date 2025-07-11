@@ -1,7 +1,7 @@
-import { IsMongoId, IsInt, IsPositive } from 'class-validator';
+import { IsInt, IsPositive, IsUUID } from 'class-validator';
 
 export class AddProductDto {
-  @IsMongoId()
+  @IsUUID() // Corrigido de IsMongoId para IsUUID
   productId!: string;
 
   @IsInt()

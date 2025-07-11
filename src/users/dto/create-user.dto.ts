@@ -1,7 +1,7 @@
-import { UserRoleEnum } from '../entities/user.role';
+import { UserRoleEnum } from '../entities/user.role.enum';
 import {
   IsArray,
-  IsBoolean,
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -24,13 +24,14 @@ export class CreateUserDto {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(12)
-  @MaxLength(12)
+  // Ajustado para aceitar 10 ou 11 dígitos, que é o padrão no Brasil para celulares.
+  @MinLength(10)
+  @MaxLength(11)
   phone!: string;
 
-  @IsBoolean()
+  @IsEmail()
   @IsOptional()
-  isAdmin?: boolean;
+  email?: string;
 
   @IsStrongPassword({
     minLength: 8,
@@ -41,4 +42,9 @@ export class CreateUserDto {
   })
   @IsOptional()
   password?: string;
+
+  // Propriedade adicionada para o seeder
+  @IsString()
+  @IsOptional()
+  password_hash?: string;
 }

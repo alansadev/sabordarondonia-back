@@ -1,0 +1,12 @@
+# Ignora a pasta de dependências, pois elas serão instaladas dentro do contêiner.
+node_modules
+
+# Ignora a pasta de build, pois ela será gerada dentro do contêiner.
+dist
+
+# Ignora o arquivo de log do npm.
+npm-debug.log
+
+# Ignora o próprio Dockerfile e o docker-compose.
+Dockerfile
+docker-compose.yml

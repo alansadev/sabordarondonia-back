@@ -10,128 +10,130 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
-import { ObjectId } from 'mongodb';
-import { UserRoleEnum } from './entities/user.role';
+import { UserRoleEnum } from './entities/user.role.enum';
+import { FindOrCreateUserDto } from './dto/find-or-create-user.dto';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    try {
-      let password_hash;
-      const userData = {
-        name: createUserDto.name,
-        phone: createUserDto.phone,
-        roles: createUserDto.roles,
-        is_admin: createUserDto.isAdmin ?? false,
-      };
 
-      if (createUserDto.password) {
-        const salt = 10;
-        password_hash = await bcrypt.hash(createUserDto.password, salt);
-        Object.assign(userData, password_hash);
+  async findOrCreateByPhone(
+    findOrCreateUserDto: FindOrCreateUserDto,
+  ): Promise<User> {
+    const { phone, name } = findOrCreateUserDto;
+
+    const existingUser = await this.findByPhone(phone);
+
+    if (existingUser) {
+      return existingUser;
+    }
+
+    const newUser = await this.create({
+      name,
+      phone,
+      roles: [UserRoleEnum.CLIENT],
+    });
+
+    return newUser;
+  }
+
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const { password, password_hash, ...restOfDto } = createUserDto;
+    const userData: Partial<User> = { ...restOfDto };
+
+    try {
+      if (password) {
+        const salt = await bcrypt.genSalt();
+        userData.password_hash = await bcrypt.hash(password, salt);
+      } else if (password_hash) {
+        userData.password_hash = password_hash;
       }
 
       const newUser = this.userRepository.create(userData);
-
       return this.userRepository.save(newUser);
     } catch (error) {
-      // Forma segura de verificar a propriedade
       if (
         error &&
         typeof error === 'object' &&
         'code' in error &&
-        error.code === 11000
+        error.code === '23505'
       ) {
-        throw new ConflictException('This phone is already registered');
+        throw new ConflictException('Telefone ou email já registrado.');
       }
       throw error;
     }
   }
 
+  async findForAuth(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.roles',
+        'user.password_hash',
+      ])
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
   async findAll(): Promise<User[]> {
-    return this.userRepository.find({
-      relations: ['orders'],
-    });
+    return this.userRepository.find();
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOneBy({ email });
   }
 
   async findOne(id: string): Promise<User> {
-    if (!ObjectId.isValid(id)) {
-      throw new NotFoundException(`Formato de ID inválido: ${id}`);
-    }
-
-    const user = await this.userRepository.findOneBy({
-      _id: new ObjectId(id),
-    });
-
+    const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
     }
-    console.log(user);
     return user;
   }
 
   async findByPhone(phone: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { phone },
-    });
+    return this.userRepository.findOneBy({ phone });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
-    if (!ObjectId.isValid(id)) {
-      throw new NotFoundException(`Formato de ID inválido: ${id}`);
-    }
-
-    const objectId = new ObjectId(id);
-
-    const user = await this.userRepository.findOne({
-      where: { _id: objectId },
-    });
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOne(id);
 
     if (updateUserDto.phone) {
       const userByPhone = await this.findByPhone(updateUserDto.phone);
-      if (userByPhone)
+      if (userByPhone && userByPhone.id !== id) {
         throw new ConflictException('O telefone informado já está cadastrado');
+      }
     }
 
-    if (!user) {
-      throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
-    }
+    const { password, roles, ...restOfDto } = updateUserDto;
 
-    const { password, isAdmin, roles, ...restOfDto } = updateUserDto;
     Object.assign(user, restOfDto);
 
     if (password) {
-      const salt = 10;
+      const salt = await bcrypt.genSalt();
       user.password_hash = await bcrypt.hash(password, salt);
     }
 
     if (roles) {
       const existingRoles = user.roles || [];
       const rolesSet = new Set(existingRoles);
-
       for (const role of roles) {
         rolesSet.add(role);
       }
-
       user.roles = Array.from(rolesSet);
-    }
-
-    if (isAdmin && !user.is_admin) {
-      user.roles.push(UserRoleEnum.ADMIN);
-      user.is_admin = isAdmin;
     }
 
     return this.userRepository.save(user);
   }
 
   async remove(id: string): Promise<void> {
-    if (!ObjectId.isValid(id)) {
-      throw new NotFoundException(`Formato de ID inválido: ${id}`);
-    }
-    const result = await this.userRepository.delete(new ObjectId(id));
+    const result = await this.userRepository.delete(id);
+
     if (result.affected === 0) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado`);
     }

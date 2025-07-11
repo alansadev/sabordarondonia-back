@@ -1,0 +1,30 @@
+# docker-compose.yml
+version: '3.8'
+services:
+  api:
+    build: . # Constrói a imagem a partir do Dockerfile na pasta atual.
+    container_name: sabor_da_rondonia_api
+    ports:
+      - "3000:3000" # Mapeia a porta 3000 do seu PC para a porta 3000 do contêiner.
+    env_file:
+      - .env.development # Carrega as variáveis de ambiente do seu arquivo .env.
+    depends_on:
+      - db # Diz ao Docker para iniciar o serviço 'db' antes de iniciar a 'api'.
+    volumes:
+      - .:/usr/src/app # Espelha o seu código local para dentro do contêiner (ótimo para desenvolvimento).
+      - /usr/src/app/node_modules # Garante que a node_modules do contêiner não seja sobrescrita.
+  db:
+    image: postgres:15
+    container_name: sabor_da_rondonia_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME} # Usa as variáveis do seu arquivo .env.
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

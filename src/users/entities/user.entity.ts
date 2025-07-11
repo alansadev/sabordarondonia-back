@@ -1,22 +1,26 @@
 import { Order } from 'src/orders/entities/order.entity';
-import { UserRoleEnum } from './user.role';
+import { UserRoleEnum } from './user.role.enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ObjectId,
-  ObjectIdColumn,
   OneToMany,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 @Entity('users')
 export class User {
-  @ObjectIdColumn()
-  _id!: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-  @Column()
+  @Column({
+    type: 'enum',
+    enum: UserRoleEnum,
+    array: true,
+    default: [UserRoleEnum.CLIENT],
+  })
   roles!: UserRoleEnum[];
 
   @Column()
@@ -25,14 +29,24 @@ export class User {
   @Column({ unique: true })
   phone!: string;
 
-  @Column()
-  is_admin!: boolean;
+  @Column({ unique: true, nullable: true })
+  email?: string;
 
+  @Exclude()
   @Column({ nullable: true })
   password_hash?: string;
 
-  @OneToMany(() => Order, (order) => order.user, { eager: true })
-  orders!: Order[];
+  @OneToMany(() => Order, (order) => order.client)
+  orders_as_client!: Order[];
+
+  @OneToMany(() => Order, (order) => order.seller)
+  orders_as_seller!: Order[];
+
+  @OneToMany(() => Order, (order) => order.cashier)
+  orders_as_cashier!: Order[];
+
+  @OneToMany(() => Order, (order) => order.dispatcher)
+  orders_as_dispatcher!: Order[];
 
   @CreateDateColumn()
   created_at!: Date;

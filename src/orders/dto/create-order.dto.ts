@@ -1,28 +1,49 @@
 import {
-  IsEnum,
-  IsMongoId,
+  IsArray,
+  IsInt,
   IsNotEmpty,
-  IsNumber,
-  IsOptional,
+  IsPositive,
   IsString,
-  Min,
+  IsUUID,
+  ValidateNested,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
-import { OrderPaymentMethodEnum } from '../entities/order.payment.method';
+import { Type } from 'class-transformer';
 
-export class CreateOrderDto {
-  @IsMongoId({ message: 'O ID do usuário deve ser um MongoID válido.' })
+// DTO interno para validar os dados do cliente
+class ClientInfoDto {
+  @IsString()
   @IsNotEmpty()
-  readonly userId!: string;
-
-  @IsEnum(OrderPaymentMethodEnum)
-  @IsNotEmpty()
-  readonly paymentMethod!: OrderPaymentMethodEnum;
-
-  @IsNumber()
-  @Min(0)
-  readonly value!: number;
+  name!: string;
 
   @IsString()
-  @IsOptional()
-  readonly clientName?: string;
+  @IsNotEmpty()
+  @MinLength(10)
+  @MaxLength(11)
+  phone!: string;
+}
+
+// DTO interno para validar cada item do pedido
+class OrderItemDto {
+  @IsUUID()
+  @IsNotEmpty()
+  productId!: string;
+
+  @IsInt()
+  @IsPositive()
+  quantity!: number;
+}
+
+export class CreateOrderDto {
+  @ValidateNested() // Diz ao class-validator para validar o objeto aninhado
+  @Type(() => ClientInfoDto) // Especifica o tipo do objeto aninhado
+  @IsNotEmpty()
+  clientInfo!: ClientInfoDto;
+
+  @IsArray()
+  @ValidateNested({ each: true }) // Valida cada item do array
+  @Type(() => OrderItemDto)
+  @IsNotEmpty()
+  items!: OrderItemDto[];
 }
