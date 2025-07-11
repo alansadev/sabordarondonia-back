@@ -33,7 +33,7 @@ export class ProductsService {
 
   findByIds(ids: string[]): Promise<Product[]> {
     return this.productRepository.findBy({
-      id: In(ids), // Usa o operador 'IN' do TypeORM para buscar múltiplos IDs
+      id: In(ids),
     });
   }
 

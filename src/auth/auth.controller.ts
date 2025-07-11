@@ -30,7 +30,7 @@ export class AuthController {
 
   @Public()
   @Post('client-login')
-  @UsePipes(new ValidationPipe()) // 3. Aplique o Pipe aqui
+  @UsePipes(new ValidationPipe())
   async clientLogin(@Body() clientLoginDto: ClientLoginDto) {
     const user = await this.authService.validateClient(clientLoginDto);
     if (!user) {

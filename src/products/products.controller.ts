@@ -24,10 +24,6 @@ import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  /**
-   * Rota para criar um novo produto.
-   * Apenas para usuários com o papel de ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -40,7 +36,7 @@ export class ProductsController {
         value: {
           name: 'Tênis de Corrida',
           description: 'Ideal para maratonas.',
-          price: 49990, // Representa R$ 499,90
+          price: 49990,
           stock: 150,
         } as CreateProductDto,
       },
@@ -48,7 +44,7 @@ export class ProductsController {
         summary: 'Exemplo com campos obrigatórios',
         value: {
           name: 'Garrafa de Água',
-          price: 2500, // Representa R$ 25,00
+          price: 2500,
         } as CreateProductDto,
       },
     },
@@ -58,29 +54,18 @@ export class ProductsController {
     return this.productsService.create(createProductDto);
   }
 
-  /**
-   * Rota pública para listar todos os produtos.
-   * Qualquer pessoa (clientes, visitantes) pode ver os produtos.
-   */
   @Public()
   @Get()
   findAll() {
     return this.productsService.findAll();
   }
 
-  /**
-   * Rota pública para buscar um produto específico pelo ID.
-   */
   @Public()
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findOne(id);
   }
 
-  /**
-   * Rota para atualizar um produto.
-   * Apenas para usuários com o papel de ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -92,10 +77,6 @@ export class ProductsController {
     return this.productsService.update(id, updateProductDto);
   }
 
-  /**
-   * Rota para remover um produto.
-   * Apenas para usuários com o papel de ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')

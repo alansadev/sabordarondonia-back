@@ -22,17 +22,14 @@ export class Order {
   @Generated('increment')
   order_number!: number;
 
-  // Relação com o cliente que é o dono do pedido
-  @ManyToOne(() => User, { eager: true }) // eager: true para carregar o cliente junto com o pedido
+  @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'client_id' })
   client!: User;
 
-  // NOVO: Relação opcional com o vendedor que criou o pedido
-  @ManyToOne(() => User, { nullable: true, eager: true }) // nullable: true, pois nem todo pedido terá um vendedor
+  @ManyToOne(() => User, { nullable: true, eager: true })
   @JoinColumn({ name: 'seller_id' })
   seller?: User;
 
-  // AJUSTE: Relação opcional com o caixa que confirmou o pagamento
   @ManyToOne(() => User, { nullable: true, eager: true })
   @JoinColumn({ name: 'cashier_id' })
   cashier?: User;
@@ -55,7 +52,7 @@ export class Order {
   status!: OrderStatusEnum;
 
   @Column({ type: 'integer' })
-  total_amount!: number; // Total em centavos
+  total_amount!: number;
 
   @CreateDateColumn()
   created_at!: Date;

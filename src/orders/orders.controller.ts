@@ -25,30 +25,19 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  /**
-   * Cria um novo pedido.
-   * Agora requer um token de um usuário com a permissão de CLIENT.
-   * O ID do cliente é extraído diretamente do token.
-   */
   @Post()
   @Roles(UserRoleEnum.CLIENT, UserRoleEnum.SELLER)
   create(@Body() createOrderDto: CreateOrderDto, @GetUser() user: UserPayload) {
     // Passamos o payload completo do usuário para o serviço
     return this.ordersService.create(createOrderDto, user);
   }
-  /**
-   * Rota para um CLIENTE logado buscar seus próprios pedidos.
-   */
+
   @Roles(UserRoleEnum.CLIENT)
   @Get('my-orders')
   findMyOrders(@GetUser() client: UserPayload) {
-    console.log(client);
     return this.ordersService.findOrdersByClientId(client.userId);
   }
 
-  /**
-   * Lista TODOS os pedidos. Apenas para usuários internos logados.
-   */
   @Roles(
     UserRoleEnum.ADMIN,
     UserRoleEnum.CASHIER,
@@ -60,11 +49,7 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
-  /**
-   * Busca um pedido específico pelo seu ID.
-   */
   @Get(':id')
-  // Apenas requer login. A lógica de quem pode ver o quê está no service.
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: UserPayload,
@@ -72,9 +57,6 @@ export class OrdersController {
     return this.ordersService.findOne(id, user);
   }
 
-  /**
-   * Rota para um caixa confirmar o pagamento de um pedido.
-   */
   @Roles(UserRoleEnum.CASHIER, UserRoleEnum.ADMIN)
   @Patch(':id/confirm-payment')
   confirmPayment(
@@ -85,9 +67,6 @@ export class OrdersController {
     return this.ordersService.confirmPayment(id, cashierId);
   }
 
-  /**
-   * Rota para um entregador marcar um pedido como entregue.
-   */
   @Roles(UserRoleEnum.DISPATCHER, UserRoleEnum.ADMIN)
   @Patch(':id/dispatch')
   dispatchOrder(
@@ -98,9 +77,6 @@ export class OrdersController {
     return this.ordersService.dispatchOrder(id, dispatcherId);
   }
 
-  /**
-   * Deleta/Cancela um pedido. Apenas para administradores.
-   */
   @Roles(UserRoleEnum.ADMIN)
   @Delete(':id')
   remove(@Param('id', ParseUUIDPipe) id: string) {

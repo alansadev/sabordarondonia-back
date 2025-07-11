@@ -13,11 +13,10 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
     if (!requiredRoles) {
-      return true; // Se não há papéis definidos na rota, permite o acesso
+      return true;
     }
     const { user } = context.switchToHttp().getRequest();
 
-    // Verifica se o array de papéis do usuário inclui pelo menos um dos papéis requeridos
     return requiredRoles.some((role) => user.roles?.includes(role));
   }
 }

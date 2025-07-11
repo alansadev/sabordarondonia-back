@@ -23,14 +23,10 @@ import { GetUser, UserPayload } from 'src/auth/decorators/get-user.decorator';
 
 @ApiTags('Users')
 @Controller('users')
-@UseInterceptors(ClassSerializerInterceptor) // Aplica a serialização para remover dados sensíveis
+@UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  /**
-   * ROTA PROTEGIDA: Retorna os dados do usuário atualmente logado.
-   * Qualquer usuário com um token válido (cliente, admin, etc.) pode acessar esta rota.
-   */
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @Get('me')
@@ -38,11 +34,6 @@ export class UsersController {
     return this.usersService.findOne(user.userId);
   }
 
-  // --- Rotas exclusivas para ADMIN ---
-
-  /**
-   * Cria um novo usuário interno (Seller, Cashier, etc.). Apenas para ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -51,9 +42,6 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  /**
-   * Lista todos os usuários. Apenas para ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -62,9 +50,6 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  /**
-   * Busca um usuário específico pelo ID. Apenas para ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -73,9 +58,6 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  /**
-   * Atualiza os dados de um usuário. Apenas para ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
@@ -87,9 +69,6 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
-  /**
-   * Remove um usuário. Apenas para ADMIN.
-   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')

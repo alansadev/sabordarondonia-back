@@ -11,7 +11,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// DTO interno para validar os dados do cliente
 class ClientInfoDto {
   @IsString()
   @IsNotEmpty()
@@ -24,7 +23,6 @@ class ClientInfoDto {
   phone!: string;
 }
 
-// DTO interno para validar cada item do pedido
 class OrderItemDto {
   @IsUUID()
   @IsNotEmpty()
@@ -36,13 +34,13 @@ class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  @ValidateNested() // Diz ao class-validator para validar o objeto aninhado
-  @Type(() => ClientInfoDto) // Especifica o tipo do objeto aninhado
+  @ValidateNested()
+  @Type(() => ClientInfoDto)
   @IsNotEmpty()
   clientInfo!: ClientInfoDto;
 
   @IsArray()
-  @ValidateNested({ each: true }) // Valida cada item do array
+  @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   @IsNotEmpty()
   items!: OrderItemDto[];

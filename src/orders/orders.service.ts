@@ -118,7 +118,7 @@ export class OrdersService {
     return this.orderRepository.find({
       where: { client: { id: clientId } },
       relations: ['items', 'items.product'],
-      order: { created_at: 'DESC' }, // Ordena do mais recente para o mais antigo
+      order: { created_at: 'DESC' },
     });
   }
 
