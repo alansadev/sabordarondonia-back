@@ -3,33 +3,60 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Generated,
   JoinColumn,
   ManyToOne,
-  ObjectIdColumn,
+  OneToMany,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { OrderItem } from './order-item.entity';
+import { OrderStatusEnum } from './order-status.enum';
 
-@Entity()
+@Entity('orders')
 export class Order {
-  @ObjectIdColumn()
-  _id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user' })
-  user: User;
+  @Column({ type: 'int', unique: true })
+  @Generated('increment')
+  order_number!: number;
 
-  @Column()
-  paymentMethod: string;
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'client_id' })
+  client!: User;
 
-  @Column('int64')
-  value: number;
+  @ManyToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: 'seller_id' })
+  seller?: User;
 
-  @Column()
-  clientName?: string;
+  @ManyToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: 'cashier_id' })
+  cashier?: User;
+
+  @ManyToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: 'dispatcher_id' })
+  dispatcher?: User;
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
+    cascade: true,
+    eager: true,
+  })
+  items!: OrderItem[];
+
+  @Column({
+    type: 'enum',
+    enum: OrderStatusEnum,
+    default: OrderStatusEnum.AWAITING_PAYMENT,
+  })
+  status!: OrderStatusEnum;
+
+  @Column({ type: 'integer' })
+  total_amount!: number;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at!: Date;
 }
