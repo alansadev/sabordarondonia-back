@@ -47,4 +47,12 @@ export class CreateProductDto {
   @Min(0, { message: 'O estoque não pode ser negativo.' })
   @IsOptional()
   stock?: number;
+
+  @ApiProperty({
+    description: 'A imagem do produto, codificada em Base64.',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  image_base64?: string;
 }

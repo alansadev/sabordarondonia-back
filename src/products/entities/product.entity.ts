@@ -19,6 +19,9 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  image_base64?: string;
+
   @Column({ type: 'integer' })
   price!: number;
 

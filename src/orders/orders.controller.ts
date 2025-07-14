@@ -82,4 +82,10 @@ export class OrdersController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.ordersService.remove(id);
   }
+
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.SELLER)
+  @Patch(':id/cancel')
+  cancel(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.cancel(id);
+  }
 }

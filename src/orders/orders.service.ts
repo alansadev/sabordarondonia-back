@@ -5,16 +5,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UserPayload } from 'src/auth/decorators/get-user.decorator';
 import { UserRoleEnum } from 'src/users/entities/user.role.enum';
 import { ProductsService } from 'src/products/products.service';
-import { OrderItem } from './entities/order-item.entity';
-import { User } from 'src/users/entities/user.entity';
 import { OrderStatusEnum } from './entities/order-status.enum';
 import { UsersService } from '../users/users.service';
+import { OrderItem } from './entities/order-item.entity';
 
 @Injectable()
 export class OrdersService {
@@ -23,60 +22,65 @@ export class OrdersService {
     private readonly orderRepository: Repository<Order>,
     private readonly userService: UsersService,
     private readonly productsService: ProductsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(
     createOrderDto: CreateOrderDto,
     user: UserPayload,
   ): Promise<Order> {
-    const { items, clientInfo } = createOrderDto;
-    let clientForOrder: User;
-    let sellerForOrder: User | undefined = undefined;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (user.roles.includes(UserRoleEnum.SELLER) && clientInfo) {
-      sellerForOrder = await this.userService.findOne(user.userId);
+    try {
+      const { items, clientInfo } = createOrderDto;
+      const sellerForOrder =
+        user.roles.includes(UserRoleEnum.SELLER) && clientInfo
+          ? await this.userService.findOne(user.userId)
+          : undefined;
+      const clientForOrder =
+        user.roles.includes(UserRoleEnum.SELLER) && clientInfo
+          ? await this.userService.findOrCreateByPhone(clientInfo)
+          : await this.userService.findOne(user.userId);
 
-      clientForOrder = await this.userService.findOrCreateByPhone(clientInfo);
-    } else {
-      clientForOrder = await this.userService.findOne(user.userId);
-    }
-    const productIds = items.map((item) => item.productId);
-    const products = await this.productsService.findByIds(productIds);
+      let totalAmount = 0;
+      const orderItems: Partial<OrderItem>[] = [];
 
-    if (products.length !== productIds.length) {
-      throw new NotFoundException('Um ou mais produtos não foram encontrados.');
-    }
-
-    let totalAmount = 0;
-    const orderItems = items.map((itemDto) => {
-      const product = products.find((p) => p.id === itemDto.productId);
-      if (!product) {
-        throw new NotFoundException(
-          `Produto com ID ${itemDto.productId} não encontrado.`,
+      for (const itemDto of items) {
+        const product = await this.productsService.updateStock(
+          itemDto.productId,
+          -itemDto.quantity,
+          queryRunner,
         );
+
+        totalAmount += product.price * itemDto.quantity;
+        orderItems.push({
+          product: product,
+          quantity: itemDto.quantity,
+          price_at_purchase: product.price,
+        });
       }
-      if (product.stock < itemDto.quantity) {
-        throw new BadRequestException(
-          `Estoque insuficiente para o produto: ${product.name}`,
-        );
-      }
-      totalAmount += product.price * itemDto.quantity;
 
-      const orderItem = new OrderItem();
-      orderItem.product = product;
-      orderItem.quantity = itemDto.quantity;
-      orderItem.price_at_purchase = product.price;
-      return orderItem;
-    });
+      const orderToCreate = {
+        client: clientForOrder,
+        seller: sellerForOrder,
+        items: orderItems,
+        total_amount: totalAmount,
+      };
 
-    const newOrder = this.orderRepository.create({
-      client: clientForOrder,
-      seller: sellerForOrder,
-      items: orderItems,
-      total_amount: totalAmount,
-    });
+      const newOrder = await queryRunner.manager.save(
+        this.orderRepository.create(orderToCreate),
+      );
 
-    return this.orderRepository.save(newOrder);
+      await queryRunner.commitTransaction();
+      return newOrder;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll(): Promise<Order[]> {
@@ -90,6 +94,53 @@ export class OrdersService {
         'items.product',
       ],
     });
+  }
+
+  async cancel(id: string): Promise<Order> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id },
+        relations: ['items', 'items.product'],
+      });
+
+      if (!order) {
+        throw new NotFoundException(`Pedido com ID ${id} não encontrado.`);
+      }
+
+      const cancellableStatuses = [
+        OrderStatusEnum.AWAITING_PAYMENT,
+        OrderStatusEnum.AWAITING_DISPATCH,
+      ];
+
+      if (!cancellableStatuses.includes(order.status)) {
+        throw new BadRequestException(
+          `Pedidos com status '${order.status}' não podem ser cancelados.`,
+        );
+      }
+
+      for (const item of order.items) {
+        await this.productsService.updateStock(
+          item.product.id,
+          item.quantity,
+          queryRunner,
+        );
+      }
+
+      order.status = OrderStatusEnum.CANCELLED;
+      const cancelledOrder = await queryRunner.manager.save(order);
+
+      await queryRunner.commitTransaction();
+      return cancelledOrder;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findOne(id: string, userPayload: UserPayload): Promise<Order> {

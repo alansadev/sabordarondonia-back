@@ -3,6 +3,7 @@ import { AppModule } from './app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import 'dotenv/config';
+import { json } from 'express';
 
 const PORT = parseInt(process.env.PORT as string, 10);
 
@@ -29,6 +30,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('api', app, document);
+  app.use(json({ limit: '10mb' }));
+  // app.enableCors({
+  //   // origin: 'http://192.168.1.14:5173', // A URL do seu front-end
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
+  // });
 
   app.useGlobalPipes(
     new ValidationPipe({
