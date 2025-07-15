@@ -31,11 +31,11 @@ async function bootstrap() {
 
   SwaggerModule.setup('api', app, document);
   app.use(json({ limit: '10mb' }));
-  // app.enableCors({
-  //   // origin: 'http://192.168.1.14:5173', // A URL do seu front-end
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  //   credentials: true,
-  // });
+  app.enableCors({
+    // origin: 'http://192.168.1.14:5173', // A URL do seu front-end
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

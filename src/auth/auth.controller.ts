@@ -25,7 +25,7 @@ export class AuthController {
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
-    return this.authService.login(user);
+    return this.authService.login(user, 'STAFF');
   }
 
   @Public()
@@ -38,6 +38,6 @@ export class AuthController {
         'Cliente não encontrado. Verifique os dados ou faça um pedido primeiro.',
       );
     }
-    return this.authService.login(user);
+    return this.authService.login(user, 'CLIENT');
   }
 }
