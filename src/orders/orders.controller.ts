@@ -32,10 +32,16 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto, user);
   }
 
-  @Roles(UserRoleEnum.CLIENT)
+  @Roles(UserRoleEnum.CLIENT, UserRoleEnum.SELLER)
   @Get('my-orders')
   findMyOrders(@GetUser() client: UserPayload) {
-    return this.ordersService.findOrdersByClientId(client.userId);
+    return this.ordersService.findOrdersByClientId(client.userId ?? client.sub);
+  }
+
+  @Roles(UserRoleEnum.SELLER, UserRoleEnum.ADMIN)
+  @Get('my-sales')
+  findMySales(@GetUser() seller: UserPayload) {
+    return this.ordersService.findOrdersBySellerId(seller.userId ?? seller.sub);
   }
 
   @Roles(

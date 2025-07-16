@@ -19,8 +19,8 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(12)
-  @MaxLength(12)
+  @MinLength(10)
+  @MaxLength(11)
   @IsOptional()
   phone?: string;
 

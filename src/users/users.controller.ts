@@ -35,6 +35,17 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRoleEnum.CLIENT)
+  @ApiBearerAuth('access-token')
+  @Patch('me/:id')
+  updateMe(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(id, updateUserDto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
   @Post()
