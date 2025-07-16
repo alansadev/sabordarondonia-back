@@ -3,6 +3,7 @@ import { Request } from 'express';
 
 export interface UserPayload {
   userId: string;
+  sub: string;
   roles: string[];
 }
 

@@ -15,6 +15,23 @@ import { OrderStatusEnum } from './entities/order-status.enum';
 import { UsersService } from '../users/users.service';
 import { OrderItem } from './entities/order-item.entity';
 
+export interface OrderListResponseDto {
+  id: string;
+  order_number: number;
+  status: string;
+  total_amount: number;
+  created_at: Date;
+  client: { id: string; name: string };
+  seller?: { id: string; name: string };
+  cashier?: { id: string; name: string };
+  dispatcher?: { id: string; name: string };
+  items: {
+    id: string;
+    quantity: number;
+    product: { id: string; name: string };
+  }[];
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -25,6 +42,46 @@ export class OrdersService {
     private readonly dataSource: DataSource,
   ) {}
 
+  private mapOrderToResponseDto(order: Order): OrderListResponseDto {
+    return {
+      id: order.id,
+      order_number: order.order_number,
+      status: order.status,
+      total_amount: order.total_amount,
+      created_at: order.created_at,
+      client: {
+        id: order.client.id,
+        name: order.client.name,
+      },
+      seller: order.seller
+        ? {
+            id: order.seller.id,
+            name: order.seller.name,
+          }
+        : undefined,
+      cashier: order.cashier
+        ? {
+            id: order.cashier.id,
+            name: order.cashier.name,
+          }
+        : undefined,
+      dispatcher: order.dispatcher
+        ? {
+            id: order.dispatcher.id,
+            name: order.dispatcher.name,
+          }
+        : undefined,
+      items: order.items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+        },
+      })),
+    };
+  }
+
   async create(
     createOrderDto: CreateOrderDto,
     user: UserPayload,
@@ -34,7 +91,7 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
-      const { items, clientInfo } = createOrderDto;
+      const { items, payment_method, change_for, clientInfo } = createOrderDto;
       const sellerForOrder =
         user.roles.includes(UserRoleEnum.SELLER) && clientInfo
           ? await this.userService.findOne(user.userId)
@@ -67,6 +124,8 @@ export class OrdersService {
         seller: sellerForOrder,
         items: orderItems,
         total_amount: totalAmount,
+        payment_method: payment_method,
+        change_for: change_for,
       };
 
       const newOrder = await queryRunner.manager.save(
@@ -165,12 +224,35 @@ export class OrdersService {
     return order;
   }
 
-  async findOrdersByClientId(clientId: string): Promise<Order[]> {
-    return this.orderRepository.find({
-      where: { client: { id: clientId } },
-      relations: ['items', 'items.product'],
-      order: { created_at: 'DESC' },
-    });
+  async findOrdersByClientId(
+    clientId: string,
+  ): Promise<OrderListResponseDto[]> {
+    const orders = await this.orderRepository
+      .createQueryBuilder('order')
+      .innerJoinAndSelect('order.client', 'client_user')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('order.seller', 'seller_user')
+      .where('client_user.id = :clientId', { clientId })
+      .orderBy('order.created_at', 'DESC')
+      .getMany();
+    return orders.map((order) => this.mapOrderToResponseDto(order));
+  }
+
+  async findOrdersBySellerId(
+    sellerId: string,
+  ): Promise<OrderListResponseDto[]> {
+    const orders = await this.orderRepository
+      .createQueryBuilder('order')
+      .innerJoinAndSelect('order.seller', 'seller')
+      .leftJoinAndSelect('order.client', 'client')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .where('seller.id = :sellerId', { sellerId })
+      .orderBy('order.created_at', 'DESC')
+      .getMany();
+
+    return orders.map((order) => this.mapOrderToResponseDto(order));
   }
 
   async confirmPayment(id: string, cashierId: string): Promise<Order> {

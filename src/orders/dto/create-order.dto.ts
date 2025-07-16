@@ -8,8 +8,11 @@ import {
   ValidateNested,
   MinLength,
   MaxLength,
+  IsEnum,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PaymentMethod } from 'src/orders/entities/payment-method.enum';
 
 class ClientInfoDto {
   @IsString()
@@ -44,4 +47,13 @@ export class CreateOrderDto {
   @Type(() => OrderItemDto)
   @IsNotEmpty()
   items!: OrderItemDto[];
+
+  @IsEnum(PaymentMethod)
+  payment_method!: PaymentMethod;
+
+  @IsOptional()
+  @IsInt({ message: 'O valor do troco deve ser um número inteiro.' })
+  @IsPositive({ message: 'O valor do troco deve ser positivo.' })
+  @Type(() => Number)
+  change_for?: number;
 }

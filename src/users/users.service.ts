@@ -120,12 +120,7 @@ export class UsersService {
     }
 
     if (roles) {
-      const existingRoles = user.roles || [];
-      const rolesSet = new Set(existingRoles);
-      for (const role of roles) {
-        rolesSet.add(role);
-      }
-      user.roles = Array.from(rolesSet);
+      user.roles = roles;
     }
 
     return this.userRepository.save(user);
