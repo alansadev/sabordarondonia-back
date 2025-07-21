@@ -32,7 +32,6 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
   app.use(json({ limit: '10mb' }));
   app.enableCors({
-    // origin: 'http://192.168.1.14:5173', // A URL do seu front-end
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -48,7 +47,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  await app.listen(PORT);
+  await app.listen(PORT || 3001);
 }
 bootstrap().catch((err) => {
   console.error('NestJS application failed to start:', err);

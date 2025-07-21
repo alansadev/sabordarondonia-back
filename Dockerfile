@@ -1,7 +1,7 @@
 # --- Estágio 1: Build ---
 # Usamos uma imagem base do Node.js para o estágio de construção.
 # ATUALIZADO para a versão 20 (LTS mais recente).
-FROM node:20 AS build
+FROM node:22 AS build
 
 # Define o diretório de trabalho dentro do contêiner.
 WORKDIR /usr/src/app
@@ -21,7 +21,7 @@ RUN npm run build
 # --- Estágio 2: Produção ---
 # Usamos uma imagem mais leve e padrão para o ambiente de produção para evitar problemas de compatibilidade.
 # ATUALIZADO para a versão 20 (LTS mais recente).
-FROM node:20-slim
+FROM node:22-slim
 
 # Define o diretório de trabalho.
 WORKDIR /usr/src/app

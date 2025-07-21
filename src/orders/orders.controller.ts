@@ -28,7 +28,6 @@ export class OrdersController {
   @Post()
   @Roles(UserRoleEnum.CLIENT, UserRoleEnum.SELLER)
   create(@Body() createOrderDto: CreateOrderDto, @GetUser() user: UserPayload) {
-    // Passamos o payload completo do usuário para o serviço
     return this.ordersService.create(createOrderDto, user);
   }
 
