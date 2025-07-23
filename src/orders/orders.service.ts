@@ -108,7 +108,6 @@ export class OrdersService {
         const product = await this.productsService.updateStock(
           itemDto.productId,
           -itemDto.quantity,
-          queryRunner,
         );
 
         totalAmount += product.price * itemDto.quantity;
@@ -182,11 +181,7 @@ export class OrdersService {
       }
 
       for (const item of order.items) {
-        await this.productsService.updateStock(
-          item.product.id,
-          item.quantity,
-          queryRunner,
-        );
+        await this.productsService.updateStock(item.product.id, item.quantity);
       }
 
       order.status = OrderStatusEnum.CANCELLED;

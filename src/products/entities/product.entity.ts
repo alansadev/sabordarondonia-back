@@ -20,7 +20,7 @@ export class Product {
   description?: string;
 
   @Column({ type: 'text', nullable: true })
-  image_base64?: string;
+  image_url?: string;
 
   @Column({ type: 'integer' })
   price!: number;
