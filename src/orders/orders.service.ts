@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -14,6 +15,7 @@ import { ProductsService } from 'src/products/products.service';
 import { OrderStatusEnum } from './entities/order-status.enum';
 import { UsersService } from '../users/users.service';
 import { OrderItem } from './entities/order-item.entity';
+import { MessagingService } from 'src/messaging/messaging.service';
 
 export interface OrderListResponseDto {
   id: string;
@@ -40,6 +42,8 @@ export class OrdersService {
     private readonly userService: UsersService,
     private readonly productsService: ProductsService,
     private readonly dataSource: DataSource,
+    @Inject(MessagingService)
+    private readonly messagingService: MessagingService,
   ) {}
 
   private mapOrderToResponseDto(order: Order): OrderListResponseDto {
@@ -132,6 +136,15 @@ export class OrdersService {
       );
 
       await queryRunner.commitTransaction();
+
+      // setTimeout(() => {
+      //   this.messagingService.publishEvent('order_events', {
+      //     eventType: 'ORDER_CREATED',
+      //     orderId: newOrder.id,
+      //     userId: newOrder.client.id,
+      //   });
+      // }, 0);
+
       return newOrder;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -188,6 +201,16 @@ export class OrdersService {
       const cancelledOrder = await queryRunner.manager.save(order);
 
       await queryRunner.commitTransaction();
+
+      // setTimeout(() => {
+      //   this.messagingService.publishEvent('order_events', {
+      //     eventType: 'ORDER_STATUS_UPDATED',
+      //     orderId: cancelledOrder.id,
+      //     newStatus: cancelledOrder.status,
+      //     timestamp: new Date().toISOString(),
+      //   });
+      // }, 0);
+
       return cancelledOrder;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -266,7 +289,18 @@ export class OrdersService {
     order.cashier = cashier;
     order.status = OrderStatusEnum.AWAITING_DISPATCH;
 
-    return this.orderRepository.save(order);
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // setTimeout(() => {
+    //   this.messagingService.publishEvent('order_events', {
+    //     eventType: 'ORDER_STATUS_UPDATED',
+    //     orderId: updatedOrder.id,
+    //     newStatus: updatedOrder.status,
+    //     timeStamp: new Date().toISOString(),
+    //   });
+    // }, 0);
+
+    return updatedOrder;
   }
 
   async dispatchOrder(id: string, dispatcherId: string): Promise<Order> {
@@ -283,16 +317,63 @@ export class OrdersService {
     order.dispatcher = dispatcher;
     order.status = OrderStatusEnum.DELIVERED;
 
-    return this.orderRepository.save(order);
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // setTimeout(() => {
+    //   this.messagingService.publishEvent('order_events', {
+    //     eventType: 'ORDER_STATUS_UPDATED',
+    //     orderId: updatedOrder.id,
+    //     newStatus: updatedOrder.status,
+    //     timeStamp: new Date().toISOString(),
+    //   });
+    // }, 0);
+
+    return updatedOrder;
   }
 
   async remove(id: string): Promise<Order> {
-    const order = await this.orderRepository.findOneBy({ id });
-    if (!order) {
-      throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
-    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    order.status = OrderStatusEnum.CANCELLED;
-    return this.orderRepository.save(order);
+    try {
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id },
+        relations: ['items', 'items.product'],
+      });
+
+      if (!order) throw new NotFoundException(`Order by ID ${id} not found`);
+
+      const cancellableStatuses = [
+        OrderStatusEnum.AWAITING_PAYMENT,
+        OrderStatusEnum.AWAITING_DISPATCH,
+      ];
+
+      if (!cancellableStatuses.includes(order.status))
+        throw new BadRequestException(
+          `Orders by status '${order.status}' cannot be canceled.`,
+        );
+
+      order.status = OrderStatusEnum.CANCELLED;
+
+      const cancelledOrder = await queryRunner.manager.save(order);
+      await queryRunner.commitTransaction();
+
+      // setTimeout(() => {
+      //   this.messagingService.publishEvent('order_events', {
+      //     eventType: 'ORDER_STATUS_UPDATED',
+      //     orderID: order.id,
+      //     newStatus: cancelledOrder.status,
+      //     timeStamp: new Date().toISOString(),
+      //   });
+      // }, 0);
+
+      return cancelledOrder;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

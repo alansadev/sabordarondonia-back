@@ -1,28 +1,38 @@
 import FormData from 'form-data';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import axios from 'axios';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import axios, { isAxiosError } from 'axios';
 
 import { Product } from 'src/products/entities/product.entity';
 import { CreateProductDto } from 'src/products/dto/create-product.dto';
 import { UpdateProductDto } from 'src/products/dto/update-product.dto';
 
-function errorHandling(err: unknown) {
+function handleAxiosError(err: unknown) {
   const typedError: any = err as any;
-  if (axios.isAxiosError(typedError)) {
+  if (isAxiosError(typedError)) {
     const errorMessage = typedError.response?.data?.error || typedError.message;
-    console.error(`Erro do Axios ao chamar o microserviço: ${errorMessage}`);
+    console.error(`Axios error when calling the microservice: ${errorMessage}`);
+    if (typedError.response?.status === 404) {
+      return new NotFoundException(errorMessage);
+    }
+    if (typedError.response?.status === 400) {
+      return new BadRequestException(errorMessage);
+    }
     return new Error(
-      `Falha na comunicação com o serviço de produtos: ${errorMessage}`,
+      `Failure to communicate with product service: ${errorMessage}`,
     );
   }
 
   if (typedError instanceof Error) {
-    console.error('Erro inesperado:', typedError.message);
-    return new Error(`Ocorreu um erro inesperado: ${typedError.message}`);
+    console.error('Unexpected error:', typedError.message);
+    return new Error(`An unexpected error occurred: ${typedError.message}`);
   }
 
-  console.error('Erro desconhecido capturado:', typedError);
-  return typedError;
+  console.error('Unknown error caught:', typedError);
+  return new Error('Unknown error');
 }
 
 @Injectable()
@@ -35,7 +45,7 @@ export class ProductsService {
 
     if (!goServiceUrl || !apiKey) {
       throw new Error(
-        'Variáveis de ambiente GO_PRODUCT_SERVICE_URL e GO_API_SECRET_KEY devem ser definidas.',
+        'The environment variables GO_PRODUCT_SERVICE_URL and GO_API_SECRET_KEY must be defined.',
       );
     }
 
@@ -77,7 +87,7 @@ export class ProductsService {
       }
       return newProduct;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 
@@ -88,7 +98,7 @@ export class ProductsService {
       });
       return response.data;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 
@@ -99,10 +109,10 @@ export class ProductsService {
       });
 
       if (!response.data)
-        throw new NotFoundException(`Produto com ID ${id} não encontrado`);
+        throw new NotFoundException(`Product wiht ID ${id} not found`);
       return response.data;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 
@@ -121,7 +131,7 @@ export class ProductsService {
       );
       return response.data;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 
@@ -139,7 +149,7 @@ export class ProductsService {
       );
       return response.data;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 
@@ -149,7 +159,7 @@ export class ProductsService {
         headers: { 'X-API-KEY': this.apiKey },
       });
     } catch (error) {
-      errorHandling(error);
+      handleAxiosError(error);
     }
   }
 
@@ -167,7 +177,7 @@ export class ProductsService {
       );
       return response.data;
     } catch (err) {
-      throw errorHandling(err);
+      throw handleAxiosError(err);
     }
   }
 }

@@ -26,8 +26,13 @@ import { SeedModule } from 'src/seed/seed.module';
             ? { rejectUnauthorized: false }
             : false,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        synchronize: false,
         logging: configService.get<string>('NODE_ENV') !== 'production',
+        extra: {
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        },
       }),
     }),
     OrdersModule,
