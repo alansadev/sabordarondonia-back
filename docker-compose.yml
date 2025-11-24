@@ -1,30 +1,58 @@
-# docker-compose.yml
-version: '3.8'
+version: "3.8"
+
 services:
   api:
-    build: . # Constrói a imagem a partir do Dockerfile na pasta atual.
+    build: .
     container_name: sabor_da_rondonia_api
+    restart: always
     ports:
-      - "3000:3000" # Mapeia a porta 3000 do seu PC para a porta 3000 do contêiner.
+      - "3000:3000" # Mapeia 3000 (Externo Mac) -> 3000 (Interno Container)
     env_file:
-      - .env.development # Carrega as variáveis de ambiente do seu arquivo .env.
+      - .env # Carrega seu arquivo atual como base
+    environment:
+      # --- SOBRESCRITAS PARA DOCKER ---
+      # Forçamos estas variáveis APENAS dentro do container
+      # para corrigir o 'localhost' e a porta.
+      - NODE_ENV=production
+      - PORT=3000 # Força o NestJS a ouvir na 3000 dentro do container
+      - DB_HOST=db # Conecta no container 'db', não em localhost
+      - REDIS_HOST=redis # Conecta no container 'redis', não em localhost
     depends_on:
-      - db # Diz ao Docker para iniciar o serviço 'db' antes de iniciar a 'api'.
-    volumes:
-      - .:/usr/src/app # Espelha o seu código local para dentro do contêiner (ótimo para desenvolvimento).
-      - /usr/src/app/node_modules # Garante que a node_modules do contêiner não seja sobrescrita.
+      - db
+      - redis
+    networks:
+      - app-network
+
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: sabor_da_rondonia_db
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USERNAME} # Usa as variáveis do seu arquivo .env.
+      POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_DB: ${DB_NAME} # Ajustado para DB_NAME que está no seu .env
     ports:
       - "5432:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data # Use volume nomeado para persistência real
+    networks:
+      - app-network
+
+  redis:
+    image: redis:alpine
+    container_name: sabor_da_rondonia_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
 
 volumes:
-  pgdata:
+  pg_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

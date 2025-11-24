@@ -1,24 +1,19 @@
-import { User } from 'src/users/entities/user.entity';
 import {
-  Column,
-  CreateDateColumn,
   Entity,
-  Generated,
-  JoinColumn,
+  Column,
   ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  JoinColumn,
+  Generated,
 } from 'typeorm';
+import { BaseEntity } from 'src/common/entities/base.entity';
+import { User } from 'src/users/entities/user.entity';
 import { OrderItem } from './order-item.entity';
 import { OrderStatusEnum } from './order-status.enum';
-import { PaymentMethod } from 'src/orders/entities/payment-method.enum';
+import { PaymentMethod } from './payment-method.enum'; // Crie este enum se não existir
 
 @Entity('orders')
-export class Order {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Order extends BaseEntity {
   @Column({ type: 'int', unique: true })
   @Generated('increment')
   order_number!: number;
@@ -52,18 +47,12 @@ export class Order {
   })
   status!: OrderStatusEnum;
 
-  @Column({ type: 'enum', enum: PaymentMethod })
-  payment_method!: PaymentMethod;
+  @Column({ type: 'enum', enum: PaymentMethod }) // Ou enum PaymentMethod
+  payment_method!: string;
 
   @Column({ type: 'integer', nullable: true })
   change_for?: number;
 
   @Column({ type: 'integer' })
   total_amount!: number;
-
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
 }

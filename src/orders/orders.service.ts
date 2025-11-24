@@ -14,23 +14,9 @@ import { ProductsService } from 'src/products/products.service';
 import { OrderStatusEnum } from './entities/order-status.enum';
 import { UsersService } from '../users/users.service';
 import { OrderItem } from './entities/order-item.entity';
-
-export interface OrderListResponseDto {
-  id: string;
-  order_number: number;
-  status: string;
-  total_amount: number;
-  created_at: Date;
-  client: { id: string; name: string };
-  seller?: { id: string; name: string };
-  cashier?: { id: string; name: string };
-  dispatcher?: { id: string; name: string };
-  items: {
-    id: string;
-    quantity: number;
-    product: { id: string; name: string };
-  }[];
-}
+import { OrdersEventsService } from './orders-events.service';
+import { IOrderListResponse } from 'src/orders/interfaces/order-list-response.interface';
+import { PaymentMethod } from 'src/orders/entities/payment-method.enum';
 
 @Injectable()
 export class OrdersService {
@@ -40,15 +26,18 @@ export class OrdersService {
     private readonly userService: UsersService,
     private readonly productsService: ProductsService,
     private readonly dataSource: DataSource,
+    private readonly ordersEvents: OrdersEventsService,
   ) {}
 
-  private mapOrderToResponseDto(order: Order): OrderListResponseDto {
+  private mapOrderToResponseDto(order: Order): IOrderListResponse {
     return {
       id: order.id,
       order_number: order.order_number,
       status: order.status,
       total_amount: order.total_amount,
       created_at: order.created_at,
+      payment_method: order.payment_method as PaymentMethod,
+      change_for: order.change_for,
       client: {
         id: order.client.id,
         name: order.client.name,
@@ -133,6 +122,9 @@ export class OrdersService {
       );
 
       await queryRunner.commitTransaction();
+
+      this.ordersEvents.notifyCashierNewOrder(newOrder);
+
       return newOrder;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -142,8 +134,9 @@ export class OrdersService {
     }
   }
 
-  async findAll(): Promise<Order[]> {
+  async findAll(status?: OrderStatusEnum): Promise<Order[]> {
     return this.orderRepository.find({
+      where: status ? { status } : {},
       relations: [
         'client',
         'seller',
@@ -152,6 +145,7 @@ export class OrdersService {
         'items',
         'items.product',
       ],
+      order: { created_at: 'DESC' },
     });
   }
 
@@ -224,9 +218,7 @@ export class OrdersService {
     return order;
   }
 
-  async findOrdersByClientId(
-    clientId: string,
-  ): Promise<OrderListResponseDto[]> {
+  async findOrdersByClientId(clientId: string): Promise<IOrderListResponse[]> {
     const orders = await this.orderRepository
       .createQueryBuilder('order')
       .innerJoinAndSelect('order.client', 'client_user')
@@ -239,9 +231,7 @@ export class OrdersService {
     return orders.map((order) => this.mapOrderToResponseDto(order));
   }
 
-  async findOrdersBySellerId(
-    sellerId: string,
-  ): Promise<OrderListResponseDto[]> {
+  async findOrdersBySellerId(sellerId: string): Promise<IOrderListResponse[]> {
     const orders = await this.orderRepository
       .createQueryBuilder('order')
       .innerJoinAndSelect('order.seller', 'seller')
@@ -270,8 +260,11 @@ export class OrdersService {
     const cashier = await this.userService.findOne(cashierId);
     order.cashier = cashier;
     order.status = OrderStatusEnum.AWAITING_DISPATCH;
+    const saved = await this.orderRepository.save(order);
 
-    return this.orderRepository.save(order);
+    this.ordersEvents.notifyDispatcherOrderAvailable(saved);
+
+    return saved;
   }
 
   async dispatchOrder(id: string, dispatcherId: string): Promise<Order> {

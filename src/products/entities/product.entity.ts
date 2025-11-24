@@ -1,26 +1,17 @@
+import { Entity, Column, OneToMany } from 'typeorm';
+import { BaseEntity } from 'src/common/entities/base.entity';
 import { OrderItem } from 'src/orders/entities/order-item.entity';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
 
 @Entity('products')
-export class Product {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Product extends BaseEntity {
   @Column({ unique: true })
   name!: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'text', nullable: true })
-  image_base64?: string;
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  imageUrl?: string;
 
   @Column({ type: 'integer' })
   price!: number;
@@ -28,12 +19,9 @@ export class Product {
   @Column({ type: 'integer', default: 0 })
   stock!: number;
 
+  @Column({ nullable: true })
+  category?: string;
+
   @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
   order_items!: OrderItem[];
-
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
 }

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Request } from 'express';
 import { UserRoleEnum } from 'src/users/entities/user.role.enum';
-import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -15,9 +15,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        // 1. Tenta ler do Cookie (Prioridade para o Front Web)
+        (request: Request) => {
+          const cookies = request.cookies as Record<string, string> | undefined;
+          return cookies?.access_token || null;
+        },
+        // 2. Fallback: Tenta ler do Header 'Authorization: Bearer <token>' (Para Swagger/Postman)
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      secretOrKey: configService.get<string>('JWT_SECRET')!,
     });
   }
 

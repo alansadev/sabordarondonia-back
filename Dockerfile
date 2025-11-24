@@ -1,43 +1,72 @@
-# --- Estágio 1: Build ---
-# Usamos uma imagem base do Node.js para o estágio de construção.
-# ATUALIZADO para a versão 20 (LTS mais recente).
-FROM node:22 AS build
+# --- BASE ---
+# Criamos uma base leve para não repetir comandos
+FROM node:22-alpine AS base
+WORKDIR /app
+# Habilita o Corepack para usar a versão do Yarn definida no package.json
+RUN corepack enable
 
-# Define o diretório de trabalho dentro do contêiner.
-WORKDIR /usr/src/app
+# --- ESTÁGIO 1: DEPENDÊNCIAS (Todas) ---
+FROM base AS deps
+# Copia apenas os arquivos de definição
+COPY package.json yarn.lock ./
+# Copia a pasta .yarn (cache e binários do yarn)
+COPY .yarn ./.yarn
 
-# Copia o package.json e o package-lock.json para o contêiner.
-COPY package*.json ./
+# O PULO DO GATO: Criamos o arquivo de config DENTRO do container
+# Isso força o Yarn a criar uma pasta node_modules real, e não usar PnP
+RUN echo "nodeLinker: node-modules" > .yarnrc.yml
 
-# Instala as dependências da aplicação.
-RUN npm install
+# Instala TODAS as dependências (incluindo dev) para o build
+RUN yarn install --immutable
 
-# Copia todo o código-fonte da sua aplicação para o contêiner.
+# --- ESTÁGIO 2: BUILD ---
+FROM base AS builder
+# Copia a config do yarn criada/necessária
+COPY --from=deps /app/.yarnrc.yml ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/.yarn ./.yarn
 COPY . .
 
-# Executa o comando de build do NestJS, que compila o TypeScript para JavaScript.
-RUN npm run build
+# Roda o build do NestJS
+RUN yarn build
 
-# --- Estágio 2: Produção ---
-# Usamos uma imagem mais leve e padrão para o ambiente de produção para evitar problemas de compatibilidade.
-# ATUALIZADO para a versão 20 (LTS mais recente).
-FROM node:22-slim
+# --- ESTÁGIO 3: DEPENDÊNCIAS DE PRODUÇÃO ---
+FROM base AS prod-deps
+COPY package.json yarn.lock ./
+COPY .yarn ./.yarn
 
-# Define o diretório de trabalho.
-WORKDIR /usr/src/app
+# Cria a config novamente neste estágio
+RUN echo "nodeLinker: node-modules" > .yarnrc.yml
 
-# Copia apenas o package.json e o package-lock.json.
-COPY package*.json ./
+# Instala APENAS dependências de produção
+# O 'yarn workspaces focus' é mais seguro no Berry, mas o install --production funciona com node-modules
+RUN yarn install --immutable --production
 
-# Instala APENAS as dependências de produção, ignorando as de desenvolvimento.
-RUN npm install --only=production
 
-# Copia os artefatos de build (a pasta 'dist') e a pasta node_modules do estágio anterior.
-COPY --from=build /usr/src/app/dist ./dist
-COPY --from=build /usr/src/app/node_modules ./node_modules
+  FROM base AS runner
 
-# Expõe a porta que a sua aplicação NestJS usa.
-EXPOSE 3000
-
-# O comando para iniciar a aplicação quando o contêiner for executado.
-CMD ["node", "dist/main"]
+  ENV NODE_ENV=production
+  
+  # Cria usuário de segurança
+  RUN addgroup --system --gid 1001 nodejs
+  RUN adduser --system --uid 1001 nestjs
+  
+  # Copia as dependências LIMPAS de produção
+  COPY --from=prod-deps /app/node_modules ./node_modules
+  COPY --from=prod-deps /app/package.json ./
+  
+  # Copia o código compilado (dist)
+  COPY --from=builder /app/dist ./dist
+  
+  # --- A CORREÇÃO DO ERRO DE LOGS ---
+  # 1. Cria a pasta de logs explicitamente
+  # 2. Passa a posse (chown) de TODA a pasta /app para o usuário nestjs
+  RUN mkdir -p logs
+  RUN chown -R nestjs:nodejs /app
+  
+  # Define permissões e usuário
+  USER nestjs
+  
+  EXPOSE 3000
+  
+  CMD ["node", "dist/main"]

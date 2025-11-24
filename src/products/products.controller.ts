@@ -7,54 +7,64 @@ import {
   Param,
   Delete,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRoleEnum } from 'src/users/entities/user.role.enum';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiTags,
+  ApiOperation,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from 'src/auth/decorators/public.decorator';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
-  @ApiBody({
-    type: CreateProductDto,
-    description: 'Estrutura de dados para a criação de um novo produto.',
-    examples: {
-      produtoCompleto: {
-        summary: 'Exemplo com todos os campos',
-        value: {
-          name: 'Tênis de Corrida',
-          description: 'Ideal para maratonas.',
-          price: 49990,
-          stock: 150,
-        } as CreateProductDto,
-      },
-      produtoMinimo: {
-        summary: 'Exemplo com campos obrigatórios',
-        value: {
-          name: 'Garrafa de Água',
-          price: 2500,
-        } as CreateProductDto,
-      },
-    },
-  })
-  @Post()
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  @ApiOperation({ summary: 'Criar produto com imagem' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('image')) // Nome do campo no form-data
+  async create(
+    @Body() createProductDto: CreateProductDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    // Conversão de tipos do form-data (tudo vem como string)
+    if (createProductDto.price)
+      createProductDto.price = Number(createProductDto.price);
+    if (createProductDto.stock)
+      createProductDto.stock = Number(createProductDto.stock);
+
+    return this.productsService.create(createProductDto, file);
   }
 
-  @Public()
+  @Public() // Aberto para clientes verem o cardápio
   @Get()
   findAll() {
     return this.productsService.findAll();
@@ -66,21 +76,38 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
+  @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
-  @Patch(':id')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('image'))
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    return this.productsService.update(id, updateProductDto);
+    if (updateProductDto.price)
+      updateProductDto.price = Number(updateProductDto.price);
+    if (updateProductDto.stock)
+      updateProductDto.stock = Number(updateProductDto.stock);
+
+    return this.productsService.update(id, updateProductDto, file);
   }
 
+  @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRoleEnum.ADMIN)
   @ApiBearerAuth('access-token')
-  @Delete(':id')
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.remove(id);
   }

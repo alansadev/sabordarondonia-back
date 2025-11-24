@@ -9,12 +9,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class User extends BaseEntity {
   @Column({
     type: 'enum',
     enum: UserRoleEnum,
@@ -48,9 +46,6 @@ export class User {
   @OneToMany(() => Order, (order) => order.dispatcher)
   orders_as_dispatcher!: Order[];
 
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
+  @Column({ type: 'varchar', nullable: true, select: false })
+  current_refresh_token?: string | null;
 }

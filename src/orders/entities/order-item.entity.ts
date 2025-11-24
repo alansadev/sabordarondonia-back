@@ -1,19 +1,16 @@
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from 'src/common/entities/base.entity';
 import { Product } from 'src/products/entities/product.entity';
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
 import { Order } from './order.entity';
 
 @Entity('order_items')
-export class OrderItem {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+export class OrderItem extends BaseEntity {
+  // 'id' vem da BaseEntity
 
-  @ManyToOne(() => Order, (order) => order.items, { nullable: false })
+  @ManyToOne(() => Order, (order) => order.items, {
+    onDelete: 'CASCADE', // Se deletar pedido, deleta itens
+    nullable: false,
+  })
   @JoinColumn({ name: 'order_id' })
   order!: Order;
 
@@ -27,5 +24,5 @@ export class OrderItem {
   quantity!: number;
 
   @Column({ type: 'integer' })
-  price_at_purchase!: number;
+  price_at_purchase!: number; // Snapshot do preço
 }

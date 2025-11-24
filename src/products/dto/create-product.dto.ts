@@ -7,7 +7,7 @@ import {
   IsInt,
   Min,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -17,6 +17,11 @@ export class CreateProductDto {
   @IsString({ message: 'O nome deve ser uma string.' })
   @IsNotEmpty({ message: 'O nome não pode estar vazio.' })
   name!: string;
+
+  @ApiProperty({ description: 'Categoria do produto', example: 'Lanches' })
+  @IsString()
+  @IsNotEmpty()
+  category!: string;
 
   @ApiProperty({
     description: 'A descrição detalhada do produto.',
@@ -48,11 +53,8 @@ export class CreateProductDto {
   @IsOptional()
   stock?: number;
 
-  @ApiProperty({
-    description: 'A imagem do produto, codificada em Base64.',
-    required: false,
-  })
+  @ApiHideProperty()
   @IsString()
   @IsOptional()
-  image_base64?: string;
+  imageUrl?: string;
 }

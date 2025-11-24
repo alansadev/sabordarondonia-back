@@ -1,8 +1,6 @@
-import { UserRoleEnum } from '../entities/user.role.enum';
+import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsArray,
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -12,26 +10,43 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsEnum(UserRoleEnum, { each: true })
-  @IsArray()
-  @IsOptional()
-  roles?: UserRoleEnum[];
-
+  @ApiProperty({
+    description: 'Nome completo do usuário',
+    example: 'Maria Santos',
+    minLength: 3,
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
   name!: string;
 
+  @ApiProperty({
+    description: 'Telefone do usuário com DDD, sem formatação',
+    example: '69912345678',
+    minLength: 10,
+    maxLength: 11,
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
   @MaxLength(11)
   phone!: string;
 
+  @ApiProperty({
+    description: 'Email do usuário',
+    example: 'maria.santos@sabordarondonia.com',
+    required: false,
+  })
   @IsEmail()
   @IsOptional()
   email?: string;
 
+  @ApiProperty({
+    description:
+      'Senha do usuário (mínimo 8 caracteres, maiúsculas, minúsculas, números e símbolos)',
+    example: 'SenhaSegura123!',
+    format: 'password',
+  })
   @IsStrongPassword({
     minLength: 8,
     minLowercase: 1,
@@ -41,8 +56,4 @@ export class CreateUserDto {
   })
   @IsOptional()
   password?: string;
-
-  @IsString()
-  @IsOptional()
-  password_hash?: string;
 }
